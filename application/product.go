@@ -22,14 +22,27 @@ const (
 )
 
 type Product struct {
-	ProductId     string  //'json:"product_id"'
-	ProductName   string  //'json:"product_name"'
-	ProductStatus string  //'json:"product_status"'
-	ProductPrice  float64 //'json:"product_price"'
+	ProductId     string  `valid:"uuidv4,optional"`
+	ProductName   string  `valid:"required"`
+	ProductStatus string  `valid:"required,in(enabled|disabled),productStatusValidator"`
+	ProductPrice  float64 `valid:"float,optional"`
 }
 
 func init() {
 	govalidator.SetFieldsRequiredByDefault(true)
+	govalidator.CustomTypeTagMap.Set("productStatusValidator", func(i interface{}, context interface{}) bool {
+		switch v := context.(type) {
+		case Product:
+			if v.ProductStatus == PRODUCT_STATUS_DISABLED {
+				return v.ProductPrice == 0.0
+			}
+			if v.ProductStatus == PRODUCT_STATUS_ENABLED {
+				return v.ProductPrice > 0.0
+			}
+		}
+		return false
+	})
+
 }
 
 func (p *Product) GetProductId() string {
@@ -58,6 +71,11 @@ func NewProduct(productId string, productName string, productStatus string, prod
 }
 
 func (p *Product) IsProductValid() (bool, error) {
+
+	_, err := govalidator.ValidateStruct(p)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
